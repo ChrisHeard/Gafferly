@@ -4,13 +4,20 @@ A mobile-first demonstrator for Gafferly's initial workflow:
 
 **Storefront → structured enquiry → trader inbox → trader-approved quote → customer acceptance → deposit demonstration**
 
-The seeded trade business is **BrightWash Exterior Cleaning**, serving Bristol. The app contains a customer journey, trader dashboard, editable quote builder, simulated deposit completion, an optional Stripe Checkout test-mode endpoint and a draft Supabase schema for the later pilot foundation.
+The seeded trade business is **BrightWash Exterior Cleaning**, serving Bristol. The app contains a customer journey, trader dashboard and editable quote builder for trader demos.
 
-## What is intentionally mocked
+## Prototype guardrails (important)
 
-This is a prototype for trader demonstrations. It does not yet provide authenticated trader accounts, production tenant isolation, private photograph persistence, live-payment webhooks, email delivery or production legal wording. Do not use it to receive real customer enquiries or payments until those controls are implemented and reviewed.
+This is a demonstration prototype, not a production service.
 
-## Run locally
+- Do **not** use real customer enquiries yet.
+- Do **not** upload real customer photos yet.
+- Do **not** take real deposits yet.
+- Do **not** present this as live payment processing.
+
+The current flow is designed for guided meetings and product validation only.
+
+## Run the prototype locally
 
 Requirements: Node.js 20.9 or later.
 
@@ -19,37 +26,43 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:3000` and choose either the customer journey or the trader dashboard.
+Open `http://localhost:3000`.
 
-## Demo routes
+## Primary demonstration routes
 
 | Route | Purpose |
 | --- | --- |
 | `/brightwash` | Customer-facing storefront |
 | `/brightwash/request-quote` | Structured enquiry form |
 | `/dashboard` | Trader overview |
-| `/dashboard/enquiries/demo-001` | Seeded enquiry and Brenda summary |
-| `/dashboard/enquiries/demo-001/create-quote` | Editable quote builder |
-| `/quote/demo-001` | Customer quote view |
-| `/quote/demo-001/checkout` | Mock checkout and optional Stripe test path |
-| `/dashboard/jobs/demo-001` | Paid-deposit job state |
+| `/dashboard/enquiries/<enquiry-id>` | Enquiry detail and Brenda summary |
+| `/dashboard/enquiries/<enquiry-id>/create-quote` | Editable quote builder |
+| `/quote/<enquiry-id>` | Customer quote view |
+| `/quote/<enquiry-id>/checkout` | Demonstration checkout state |
+| `/dashboard/jobs/<enquiry-id>` | Job record with deposit state |
 
-## Optional Stripe test-mode checkout
+## Demo state persistence and reset
 
-The default flow uses a mock payment confirmation. To try Stripe-hosted Checkout in **test mode only**:
+The prototype stores demonstration data in browser `localStorage`, so submitted enquiries and quote/deposit state persist between page reloads in the same browser profile.
 
-1. Copy `.env.example` to `.env.local`.
-2. Add a Stripe test secret key to `STRIPE_SECRET_KEY`.
-3. Set `ENABLE_STRIPE_TEST_CHECKOUT=true`.
-4. Restart the development server and open the checkout screen.
+### Reset before each trader meeting
 
-The server creates the test checkout amount from the seeded approved quote; the browser does not submit an amount. This is not yet a live-pilot payment implementation: there is no Stripe Connect onboarding or verified webhook reconciliation in this starter.
+Use one of these options before a fresh demo:
 
-## Supabase foundation
+1. **Quick browser reset**: clear site data for `http://localhost:3000` in DevTools/Application Storage.
+2. **New clean session**: open the demo in a private/incognito window.
+3. **Manual localStorage reset** (DevTools Console):
 
-`supabase/migrations/0001_initial_schema.sql` provides an initial organisation-scoped schema and RLS starting point. It deliberately does **not** permit anonymous customer enquiry inserts: implement intake through a validated server-side route with rate limiting/private media design before accepting personal data.
+```js
+localStorage.clear()
+location.reload()
+```
 
-The `.env.example` fields and `lib/supabase/` client factories are present for the next stage of development, but the prototype pages run from seeded/demo browser state.
+After reset, the seeded baseline data is shown again and you can run the script from a newly submitted enquiry.
+
+## Stripe test checkout status
+
+Stripe test checkout is no longer part of the **primary** demonstration path. The default script should stay on the prototype's internal demo payment state to keep sessions focused on workflow feedback.
 
 ## Useful commands
 
@@ -65,7 +78,7 @@ npm run test:e2e     # Playwright journey test; install browser once with npx pl
 
 1. Show the prototype to prospective pressure-washing/exterior-cleaning pilot traders.
 2. Refine enquiry fields, add-ons and deposit rules from their feedback.
-3. Wire Supabase authentication, tenant-scoped records and private media handling.
-4. Add Stripe Connect and webhook-backed payment state before any live deposit pilot.
+3. Add secure backend handling before any real enquiry/photo usage.
+4. Add verified payment architecture before any real deposit pilot.
 
 See `docs/demo-script.md` and `docs/trader-feedback-log.csv` for demonstration support.
