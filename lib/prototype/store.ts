@@ -1,5 +1,5 @@
 import { initialPrototypeState } from "./seed";
-import type { AuditEvent, PrototypeState } from "./types";
+import type { AuditEvent, Enquiry, PrototypeState } from "./types";
 
 const STORAGE_KEY = "gafferly:prototype-state";
 
@@ -64,4 +64,78 @@ export const appendEvent = (event: AuditEvent): PrototypeState => {
   };
 
   return setPrototypeState(nextState);
+};
+
+export interface CreateEnquiryInput {
+  customer: string;
+  mobile: string;
+  email: string;
+  postcode: string;
+  jobType: string;
+  size: string;
+  condition: string;
+  addOns: string[];
+  access: string;
+  notes: string;
+  photoFilenames: string[];
+}
+
+const getInitials = (name: string): string =>
+  name
+    .split(" ")
+    .map((part) => part.trim()[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
+export const createEnquiry = (input: CreateEnquiryInput): Enquiry => {
+  const current = getPrototypeState();
+  const now = new Date().toISOString();
+  const sequence = current.enquiries.length + 1;
+  const id = `enquiry-${String(sequence).padStart(4, "0")}`;
+  const reference = `BW-ENQ-${String(sequence + 144).padStart(4, "0")}`;
+
+  const enquiry: Enquiry = {
+    id,
+    reference,
+    businessId: current.business.id,
+    customer: input.customer,
+    mobile: input.mobile,
+    email: input.email,
+    initials: getInitials(input.customer),
+    postcode: input.postcode,
+    submittedAt: now,
+    jobType: input.jobType,
+    size: input.size,
+    condition: input.condition,
+    access: input.access,
+    addOns: input.addOns,
+    photoCount: input.photoFilenames.length,
+    photoFilenames: input.photoFilenames,
+    notes: input.notes,
+    status: "new",
+    readiness: "Ready for review",
+    missing: "None indicated.",
+    summary: `Customer requested ${input.jobType.toLowerCase()} in ${input.postcode}. ${input.photoFilenames.length} photo(s) supplied.`,
+  };
+
+  const nextState: PrototypeState = {
+    ...current,
+    enquiries: [enquiry, ...current.enquiries],
+    auditEvents: [
+      ...current.auditEvents,
+      {
+        id: `event-${current.auditEvents.length + 1}`,
+        businessId: current.business.id,
+        enquiryId: enquiry.id,
+        occurredAt: now,
+        event: "enquiry_created",
+        detail: `${enquiry.reference} created with ${enquiry.photoCount} photo(s)`,
+      },
+    ],
+  };
+
+  setPrototypeState(nextState);
+  return enquiry;
 };
