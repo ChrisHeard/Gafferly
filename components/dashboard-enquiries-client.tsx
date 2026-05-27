@@ -1,10 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
 import { PhotoThumb } from "@/components/demo-illustration";
 import { StatusPill } from "@/components/ui";
-import { getPrototypeState } from "@/lib/prototype/store";
+import { usePrototypeStore } from "@/hooks/use-prototype-store";
 import { buildBrendaMissingInformation, buildBrendaSummary } from "@/lib/prototype/brenda";
 
 const toDisplayStatus = (status: string) =>
@@ -19,49 +18,40 @@ const formatSubmitted = (submittedAt: string) => {
 };
 
 export function DashboardRecentEnquiries() {
-  const enquiries = useMemo(() => getPrototypeState().enquiries, []);
+  const { state } = usePrototypeStore();
+  const enquiries = state.enquiries;
 
   return (
     <>
       {enquiries.map((enquiry) => (
-        <Link
-          key={enquiry.id}
-          href={`/dashboard/enquiries/${enquiry.id}`}
-          className="flex flex-col justify-between gap-3 border-b border-[#edf1f1] p-5 last:border-0 hover:bg-[#fafcfc] sm:flex-row sm:items-center"
-        >
-          <div>
-            <p className="font-bold text-[#132e3c]">{enquiry.customer}</p>
-            <p className="mt-1 text-sm text-[#50676d]">
-              {enquiry.jobType} · {enquiry.postcode} · {enquiry.photoCount} photos
-            </p>
-          </div>
-          <div className="flex items-center gap-4">
-            <StatusPill status={toDisplayStatus(enquiry.status)} />
-            <span className="text-xs text-[#50676d]">{formatSubmitted(enquiry.submittedAt)}</span>
-          </div>
+        <Link key={enquiry.id} href={`/dashboard/enquiries/${enquiry.id}`} className="flex flex-col justify-between gap-3 border-b border-[#edf1f1] p-5 last:border-0 hover:bg-[#fafcfc] sm:flex-row sm:items-center">
+          <div><p className="font-bold text-[#132e3c]">{enquiry.customer}</p><p className="mt-1 text-sm text-[#50676d]">{enquiry.jobType} · {enquiry.postcode} · {enquiry.photoCount} photos</p></div>
+          <div className="flex items-center gap-4"><StatusPill status={toDisplayStatus(enquiry.status)} /><span className="text-xs text-[#50676d]">{formatSubmitted(enquiry.submittedAt)}</span></div>
         </Link>
       ))}
     </>
   );
 }
 
+export function FullEnquiriesList() {
+  const { state } = usePrototypeStore();
+  const enquiries = state.enquiries;
+
+  return (
+    <>
+      {enquiries.map((enquiry) => <Link key={enquiry.id} href={`/dashboard/enquiries/${enquiry.id}`} className="grid gap-2 border-b border-[#edf1f1] p-4 last:border-0 hover:bg-[#f7fafa] sm:grid-cols-[1.2fr_1.3fr_.7fr_.75fr] sm:items-center"><div><p className="font-bold">{enquiry.customer}</p><p className="text-sm text-[#50676d]">{enquiry.postcode}</p></div><p className="text-sm">{enquiry.jobType}<span className="block text-[#50676d]">{enquiry.photoCount} photos</span></p><StatusPill status={toDisplayStatus(enquiry.status)} /><p className="text-sm text-[#50676d]">{formatSubmitted(enquiry.submittedAt)}</p></Link>)}
+    </>
+  );
+}
+
 export function EnquiryDetailClient({ id }: { id: string }) {
-  const enquiry = useMemo(() => getPrototypeState().enquiries.find((item) => item.id === id) ?? null, [id]);
+  const { state } = usePrototypeStore();
+  const enquiry = state.enquiries.find((item) => item.id === id) ?? null;
   const brendaSummary = enquiry ? buildBrendaSummary(enquiry) : "";
   const brendaMissing = enquiry ? buildBrendaMissingInformation(enquiry) : "";
 
   if (!enquiry) {
-    return (
-      <div className="space-y-5">
-        <Link href="/dashboard/enquiries" className="text-sm font-bold text-[#087f83]">← Enquiries</Link>
-        <article className="surface p-6">
-          <h1 className="text-2xl font-bold text-[#132e3c]">Enquiry not found</h1>
-          <p className="mt-2 text-sm text-[#50676d]">
-            No enquiry exists for ID <code className="rounded bg-[#f2f6f6] px-2 py-1">{id}</code>. Please return to the enquiries list.
-          </p>
-        </article>
-      </div>
-    );
+    return <div className="space-y-5"><Link href="/dashboard/enquiries" className="text-sm font-bold text-[#087f83]">← Enquiries</Link><article className="surface p-6"><h1 className="text-2xl font-bold text-[#132e3c]">Enquiry not found</h1><p className="mt-2 text-sm text-[#50676d]">No enquiry exists for ID <code className="rounded bg-[#f2f6f6] px-2 py-1">{id}</code>. Please return to the enquiries list.</p></article></div>;
   }
 
   return (
