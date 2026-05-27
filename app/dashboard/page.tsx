@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { StatusPill } from "@/components/ui";
-import { enquiries } from "@/lib/demo-data";
+import { DashboardRecentEnquiries } from "@/components/dashboard-enquiries-client";
 
 export default function DashboardPage() {
   return (
@@ -11,7 +10,7 @@ export default function DashboardPage() {
       </div>
       <div className="surface overflow-hidden">
         <div className="flex items-center justify-between border-b border-[#e1e7e6] p-5"><h2 className="font-bold text-[#132e3c]">Recent enquiries</h2><Link className="text-sm font-bold text-[#087f83]" href="/dashboard/enquiries">View all</Link></div>
-        {enquiries.map((enquiry) => <Link key={enquiry.id} href={`/dashboard/enquiries/${enquiry.id}`} className="flex flex-col justify-between gap-3 border-b border-[#edf1f1] p-5 last:border-0 hover:bg-[#fafcfc] sm:flex-row sm:items-center"><div><p className="font-bold text-[#132e3c]">{enquiry.customer}</p><p className="mt-1 text-sm text-[#50676d]">{enquiry.jobType} · {enquiry.postcode} · {enquiry.photoCount} photos</p></div><div className="flex items-center gap-4"><StatusPill status={enquiry.status} /><span className="text-xs text-[#50676d]">{enquiry.submitted}</span></div></Link>)}
+        <DashboardRecentEnquiries />
       </div>
     </div>
   );
