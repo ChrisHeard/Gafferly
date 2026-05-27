@@ -102,15 +102,33 @@ export const initialPrototypeState: PrototypeState = {
       balance: 22500,
       notes:
         "Includes surface clean, moss and weed treatment, and re-sanding after the surface has dried. Outside tap access required on the day.",
+      sentSnapshot: {
+        version: 1,
+        sentAt: "2026-05-26T10:30:00Z",
+        items: [
+          { id: "item-1", quoteId: "quote-demo-001", description: "Block-paving pressure wash", price: 18000 },
+          { id: "item-2", quoteId: "quote-demo-001", description: "Moss and weed removal treatment", price: 3500 },
+          { id: "item-3", quoteId: "quote-demo-001", description: "Re-sanding after cleaning", price: 7000 },
+        ],
+        total: 28500,
+        deposit: 6000,
+        balance: 22500,
+        notes:
+          "Includes surface clean, moss and weed treatment, and re-sanding after the surface has dried. Outside tap access required on the day.",
+        validUntil: "2026-06-08",
+      },
     },
   ],
   quoteAcceptances: [
     {
       id: "acceptance-1",
       quoteId: "quote-demo-001",
+      quoteSnapshotVersion: 1,
+      quoteSnapshotSentAt: "2026-05-26T10:30:00Z",
       acceptedAt: "2026-05-26T10:41:00Z",
       acceptedBy: "Sarah Mitchell",
-      termsAcknowledged: true,
+      acknowledgementText:
+        "I confirm the described scope of work and understand that the deposit is required before a booking is confirmed. Prototype wording only.",
     },
   ],
   payments: [

@@ -300,3 +300,70 @@ export const sendQuote = (quoteId: string): Quote => {
   setPrototypeState(nextState);
   return sentQuote;
 };
+
+export const acceptQuote = (quoteId: string, acknowledgementText: string): Quote => {
+  const current = getPrototypeState();
+  const quote = current.quotes.find((item) => item.id === quoteId);
+
+  if (!quote) {
+    throw new Error(`Quote ${quoteId} not found`);
+  }
+
+  if (!quote.sentSnapshot) {
+    throw new Error("Quote must be sent before it can be accepted");
+  }
+
+  if (quote.status === "accepted") {
+    return quote;
+  }
+
+  if (quote.status !== "sent" && quote.status !== "viewed") {
+    throw new Error("Only sent quotes can be accepted");
+  }
+
+  const trimmedAcknowledgement = acknowledgementText.trim();
+  if (!trimmedAcknowledgement) {
+    throw new Error("Acknowledgement text is required");
+  }
+
+  const nowIso = new Date().toISOString();
+  const acceptedQuote: Quote = {
+    ...quote,
+    status: "accepted",
+  };
+
+  const nextState: PrototypeState = {
+    ...current,
+    enquiries: current.enquiries.map((enquiry) =>
+      enquiry.id === quote.enquiryId ? { ...enquiry, status: "accepted" } : enquiry,
+    ),
+    quotes: current.quotes.map((item) => (item.id === quoteId ? acceptedQuote : item)),
+    quoteAcceptances: [
+      ...current.quoteAcceptances,
+      {
+        id: `quote-acceptance-${current.quoteAcceptances.length + 1}`,
+        quoteId: quote.id,
+        quoteSnapshotVersion: quote.sentSnapshot.version,
+        quoteSnapshotSentAt: quote.sentSnapshot.sentAt,
+        acceptedAt: nowIso,
+        acceptedBy: quote.customer,
+        acknowledgementText: trimmedAcknowledgement,
+      },
+    ],
+    auditEvents: [
+      ...current.auditEvents,
+      {
+        id: `event-${current.auditEvents.length + 1}`,
+        businessId: current.business.id,
+        enquiryId: quote.enquiryId,
+        quoteId: quote.id,
+        occurredAt: nowIso,
+        event: "quote_accepted",
+        detail: `${quote.quoteNumber} accepted by customer`,
+      },
+    ],
+  };
+
+  setPrototypeState(nextState);
+  return acceptedQuote;
+};
