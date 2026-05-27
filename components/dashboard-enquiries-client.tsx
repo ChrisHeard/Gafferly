@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import { PhotoThumb } from "@/components/demo-illustration";
 import { StatusPill } from "@/components/ui";
 import { getPrototypeState } from "@/lib/prototype/store";
+import { buildBrendaMissingInformation, buildBrendaSummary } from "@/lib/prototype/brenda";
 
 const toDisplayStatus = (status: string) =>
   status
@@ -46,6 +47,8 @@ export function DashboardRecentEnquiries() {
 
 export function EnquiryDetailClient({ id }: { id: string }) {
   const enquiry = useMemo(() => getPrototypeState().enquiries.find((item) => item.id === id) ?? null, [id]);
+  const brendaSummary = enquiry ? buildBrendaSummary(enquiry) : "";
+  const brendaMissing = enquiry ? buildBrendaMissingInformation(enquiry) : "";
 
   if (!enquiry) {
     return (
@@ -71,7 +74,7 @@ export function EnquiryDetailClient({ id }: { id: string }) {
           <article className="surface p-5 sm:p-6"><h2 className="text-lg font-bold text-[#132e3c]">Photos supplied</h2><div className="mt-4 grid gap-3 sm:grid-cols-3">{Array.from({ length: enquiry.photoCount }).map((_, index) => <PhotoThumb key={index} index={index + 1} />)}</div></article>
         </div>
         <aside className="space-y-5">
-          <article className="surface border-[#bfdcdb] bg-[#f0f8f7] p-5"><p className="text-xs font-bold uppercase tracking-[0.12em] text-[#087f83]">Brenda · front desk</p><h2 className="mt-3 font-bold text-[#132e3c]">Enquiry summary</h2><p className="mt-2 text-sm leading-6 text-[#36545c]">Summary pending review.</p><h3 className="mt-5 text-sm font-bold text-[#132e3c]">Missing detail to confirm</h3><p className="mt-2 text-sm leading-6 text-[#36545c]">{enquiry.missing}</p><p className="mt-4 border-t border-[#d5e6e5] pt-4 text-xs text-[#50676d]">Mock assistance panel. Trader must review and set all prices.</p></article>
+          <article className="surface border-[#bfdcdb] bg-[#f0f8f7] p-5"><p className="text-xs font-bold uppercase tracking-[0.12em] text-[#087f83]">Brenda · front desk</p><h2 className="mt-3 font-bold text-[#132e3c]">Enquiry summary</h2><p className="mt-2 text-sm leading-6 text-[#36545c]">{brendaSummary}</p><h3 className="mt-5 text-sm font-bold text-[#132e3c]">Missing detail to confirm</h3><p className="mt-2 text-sm leading-6 text-[#36545c]">{brendaMissing}</p><p className="mt-4 border-t border-[#d5e6e5] pt-4 text-xs text-[#50676d]">Prototype assistance only. Advisory notes must be reviewed by the trader. Brenda does not set prices or promise quotes.</p></article>
           <Link href={`/dashboard/enquiries/${enquiry.id}/create-quote`} className="inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-[#087f83] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#096467]">Create quote</Link>
           <Link href="#" className="inline-flex min-h-12 w-full items-center justify-center rounded-xl border border-[#cedcdd] bg-white px-5 py-3 text-sm font-bold text-[#17323b] transition hover:border-[#087f83]">Request more information</Link>
         </aside>

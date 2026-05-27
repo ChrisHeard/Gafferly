@@ -1,8 +1,8 @@
 import { EnquiryDetailClient } from "@/components/dashboard-enquiries-client";
 
-type Props = { params: Promise<{ id: string }> };
+type Props = { params: { id: string } };
 
-export default async function EnquiryPage({ params }: Props) {
-  const { id } = await params;
+export default function EnquiryPage({ params }: Props) {
+  const { id } = params;
   return <EnquiryDetailClient id={id} />;
 }
