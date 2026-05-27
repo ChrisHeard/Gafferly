@@ -1,19 +1,23 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
-import { ButtonLink } from "@/components/ui";
-import { getPrototypeState } from "@/lib/prototype/store";
+import { useMemo, useState } from "react";
+import Link from "next/link";
+import { usePrototypeStore } from "@/hooks/use-prototype-store";
+import { acceptQuote } from "@/lib/prototype/store";
 import { currency } from "@/lib/utils";
 
-function subscribe() { return () => undefined; }
-function getSnapshot() { return JSON.stringify(getPrototypeState()); }
-function getServerSnapshot() { return JSON.stringify(null); }
+const acknowledgementText =
+  "I confirm the described scope of work and understand that the deposit is required before a booking is confirmed. Prototype wording only.";
 
 export function CustomerQuote({ enquiryId }: { enquiryId: string }) {
-  const serialized = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-  const state = JSON.parse(serialized) as ReturnType<typeof getPrototypeState> | null;
+  const { state } = usePrototypeStore();
+  const [isAcknowledged, setIsAcknowledged] = useState(false);
 
-  const quote = state?.quotes.find((item) => item.enquiryId === enquiryId);
+  const quote = state.quotes.find((item) => item.enquiryId === enquiryId);
+  const acceptance = useMemo(
+    () => state.quoteAcceptances.find((item) => item.quoteId === quote?.id),
+    [quote?.id, state.quoteAcceptances],
+  );
 
   if (!quote || !quote.sentSnapshot) {
     return <div className="surface p-6 text-sm text-[#50676d]">This quote is not available yet. Ask BrightWash to send it first.</div>;
@@ -46,11 +50,46 @@ export function CustomerQuote({ enquiryId }: { enquiryId: string }) {
           <h2 className="text-sm font-bold uppercase tracking-[0.1em] text-[#50676d]">Notes</h2>
           <p className="mt-3 rounded-xl bg-[#f7fafa] p-4 text-sm leading-6 text-[#36545c]">{sent.notes}</p>
         </div>
-        <label className="mt-7 flex items-start gap-3 text-sm leading-6 text-[#50676d]">
-          <input type="checkbox" defaultChecked className="mt-1 h-4 w-4 accent-[#087f83]" />
-          I confirm the described scope of work and understand that the deposit is required before a booking is confirmed. Prototype wording only.
-        </label>
-        <ButtonLink href={`/quote/${enquiryId}/checkout`} className="mt-6 w-full">Accept quote and pay deposit</ButtonLink>
+        {acceptance ? (
+          <div className="mt-7 rounded-xl border border-[#cae1df] bg-[#eef7f6] p-4 text-sm text-[#36545c]">
+            Quote accepted on <strong>{new Date(acceptance.acceptedAt).toLocaleString()}</strong>.
+          </div>
+        ) : (
+          <>
+            <label className="mt-7 flex items-start gap-3 text-sm leading-6 text-[#50676d]">
+              <input
+                type="checkbox"
+                checked={isAcknowledged}
+                onChange={(event) => setIsAcknowledged(event.target.checked)}
+                className="mt-1 h-4 w-4 accent-[#087f83]"
+              />
+              {acknowledgementText}
+            </label>
+            <button
+              type="button"
+              disabled={!isAcknowledged}
+              onClick={() => {
+                acceptQuote(quote.id, acknowledgementText);
+              }}
+              className="mt-6 w-full rounded-full bg-[#087f83] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#066d70] disabled:cursor-not-allowed disabled:bg-[#90bcbc]"
+            >
+              {isAcknowledged ? "Accept quote" : "Acknowledge quote to continue"}
+            </button>
+          </>
+        )}
+        <Link
+          href={`/quote/${enquiryId}/checkout`}
+          aria-disabled={!acceptance}
+          tabIndex={acceptance ? 0 : -1}
+          onClick={(event) => {
+            if (!acceptance) {
+              event.preventDefault();
+            }
+          }}
+          className="mt-4 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-[#087f83] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#096467] aria-disabled:pointer-events-none aria-disabled:bg-[#90bcbc]"
+        >
+          Proceed to payment
+        </Link>
       </div>
     </div>
   );

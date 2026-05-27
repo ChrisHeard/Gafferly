@@ -84,9 +84,11 @@ export interface Quote {
 export interface QuoteAcceptance {
   id: string;
   quoteId: string;
+  quoteSnapshotVersion: SentQuoteSnapshot["version"];
+  quoteSnapshotSentAt: string;
   acceptedAt: string;
   acceptedBy: string;
-  termsAcknowledged: boolean;
+  acknowledgementText: string;
 }
 
 export interface PaymentRecord {
