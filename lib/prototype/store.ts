@@ -1,5 +1,5 @@
 import { initialPrototypeState } from "./seed";
-import type { AuditEvent, Enquiry, PrototypeState } from "./types";
+import type { AuditEvent, Enquiry, PrototypeState, Quote } from "./types";
 
 const STORAGE_KEY = "gafferly:prototype-state";
 
@@ -138,4 +138,109 @@ export const createEnquiry = (input: CreateEnquiryInput): Enquiry => {
 
   setPrototypeState(nextState);
   return enquiry;
+};
+
+export const createQuoteDraft = (enquiryId: string): Quote => {
+  const current = getPrototypeState();
+  const enquiry = current.enquiries.find((item) => item.id === enquiryId);
+
+  if (!enquiry) {
+    throw new Error(`Enquiry ${enquiryId} not found`);
+  }
+
+  const existing = current.quotes.find((quote) => quote.enquiryId === enquiryId && quote.status === "draft");
+  if (existing) {
+    return existing;
+  }
+
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const validUntil = new Date(now);
+  validUntil.setDate(validUntil.getDate() + 14);
+  const sequence = current.quotes.length + 1;
+
+  const quote: Quote = {
+    id: `quote-${String(sequence).padStart(4, "0")}`,
+    enquiryId: enquiry.id,
+    businessId: current.business.id,
+    customer: enquiry.customer,
+    quoteNumber: `BW-QUOTE-${String(sequence + 210).padStart(4, "0")}`,
+    issuedAt: nowIso,
+    validUntil: validUntil.toISOString(),
+    status: "draft",
+    items: [],
+    total: 0,
+    deposit: 0,
+    balance: 0,
+    notes: "",
+  };
+
+  const nextState: PrototypeState = {
+    ...current,
+    quotes: [quote, ...current.quotes],
+    auditEvents: [
+      ...current.auditEvents,
+      {
+        id: `event-${current.auditEvents.length + 1}`,
+        businessId: current.business.id,
+        enquiryId: enquiry.id,
+        quoteId: quote.id,
+        occurredAt: nowIso,
+        event: "quote_draft_created",
+        detail: `${quote.quoteNumber} created for ${enquiry.reference}`,
+      },
+    ],
+  };
+
+  setPrototypeState(nextState);
+  return quote;
+};
+
+export interface UpdateQuoteDraftInput {
+  items: Quote["items"];
+  deposit: number;
+  notes: string;
+  validUntil: string;
+}
+
+export const updateQuoteDraft = (quoteId: string, values: UpdateQuoteDraftInput): Quote => {
+  const current = getPrototypeState();
+  const quote = current.quotes.find((item) => item.id === quoteId);
+
+  if (!quote) {
+    throw new Error(`Quote ${quoteId} not found`);
+  }
+
+  if (values.deposit < 0) {
+    throw new Error("Deposit cannot be negative");
+  }
+
+  if (values.items.some((item) => item.price < 0)) {
+    throw new Error("Line item prices cannot be negative");
+  }
+
+  const total = values.items.reduce((sum, item) => sum + item.price, 0);
+
+  if (values.deposit > total) {
+    throw new Error("Deposit cannot exceed total");
+  }
+
+  const updatedQuote: Quote = {
+    ...quote,
+    items: values.items,
+    total,
+    deposit: values.deposit,
+    balance: total - values.deposit,
+    notes: values.notes,
+    validUntil: values.validUntil,
+    status: "draft",
+  };
+
+  const nextState: PrototypeState = {
+    ...current,
+    quotes: current.quotes.map((item) => (item.id === quoteId ? updatedQuote : item)),
+  };
+
+  setPrototypeState(nextState);
+  return updatedQuote;
 };
