@@ -148,7 +148,7 @@ export const createQuoteDraft = (enquiryId: string): Quote => {
     throw new Error(`Enquiry ${enquiryId} not found`);
   }
 
-  const existing = current.quotes.find((quote) => quote.enquiryId === enquiryId && quote.status === "draft");
+  const existing = current.quotes.find((quote) => quote.enquiryId === enquiryId);
   if (existing) {
     return existing;
   }
@@ -211,6 +211,10 @@ export const updateQuoteDraft = (quoteId: string, values: UpdateQuoteDraftInput)
     throw new Error(`Quote ${quoteId} not found`);
   }
 
+  if (quote.status !== "draft") {
+    throw new Error("Sent quotes are read-only");
+  }
+
   if (values.deposit < 0) {
     throw new Error("Deposit cannot be negative");
   }
@@ -243,4 +247,56 @@ export const updateQuoteDraft = (quoteId: string, values: UpdateQuoteDraftInput)
 
   setPrototypeState(nextState);
   return updatedQuote;
+};
+
+export const sendQuote = (quoteId: string): Quote => {
+  const current = getPrototypeState();
+  const quote = current.quotes.find((item) => item.id === quoteId);
+
+  if (!quote) {
+    throw new Error(`Quote ${quoteId} not found`);
+  }
+
+  if (quote.status !== "draft") {
+    throw new Error("Only draft quotes can be sent");
+  }
+
+  const nowIso = new Date().toISOString();
+  const sentQuote: Quote = {
+    ...quote,
+    status: "sent",
+    sentSnapshot: {
+      version: 1,
+      sentAt: nowIso,
+      items: quote.items,
+      total: quote.total,
+      deposit: quote.deposit,
+      balance: quote.balance,
+      notes: quote.notes,
+      validUntil: quote.validUntil,
+    },
+  };
+
+  const nextState: PrototypeState = {
+    ...current,
+    enquiries: current.enquiries.map((enquiry) =>
+      enquiry.id === quote.enquiryId ? { ...enquiry, status: "quoted" } : enquiry,
+    ),
+    quotes: current.quotes.map((item) => (item.id === quoteId ? sentQuote : item)),
+    auditEvents: [
+      ...current.auditEvents,
+      {
+        id: `event-${current.auditEvents.length + 1}`,
+        businessId: current.business.id,
+        enquiryId: quote.enquiryId,
+        quoteId: quote.id,
+        occurredAt: nowIso,
+        event: "quote_sent",
+        detail: `${quote.quoteNumber} sent with total £${(quote.total / 100).toFixed(2)}`,
+      },
+    ],
+  };
+
+  setPrototypeState(nextState);
+  return sentQuote;
 };
