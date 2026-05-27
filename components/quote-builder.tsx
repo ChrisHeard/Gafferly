@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { currency } from "@/lib/utils";
-import { createQuoteDraft, updateQuoteDraft } from "@/lib/prototype/store";
+import { createQuoteDraft, sendQuote, updateQuoteDraft } from "@/lib/prototype/store";
 import type { QuoteItem } from "@/lib/prototype/types";
 
 type Item = { id: string; description: string; price: number };
@@ -17,6 +17,7 @@ export function QuoteBuilder({ enquiryId }: { enquiryId: string }) {
   const [validUntil, setValidUntil] = useState(draft?.validUntil.slice(0, 10) ?? "");
   const [error, setError] = useState<string | null>(null);
   const quoteId = draft?.id ?? null;
+  const isSent = draft?.status === "sent";
   const total = useMemo(() => items.reduce((sum, item) => sum + item.price, 0), [items]);
   const depositPence = Math.round(deposit * 100);
 
@@ -65,10 +66,23 @@ export function QuoteBuilder({ enquiryId }: { enquiryId: string }) {
     });
   }
   function preview() {
-    if (quoteId) {
+    if (quoteId && !isSent) {
       persistDraft(items, deposit, notes, validUntil);
     }
-    router.push("/quote/demo-001");
+    router.push(`/quote/${enquiryId}`);
+  }
+
+  function sendToCustomer() {
+    if (!quoteId) return;
+
+    try {
+      persistDraft(items, deposit, notes, validUntil);
+      sendQuote(quoteId);
+      setError(null);
+      router.push(`/quote/${enquiryId}`);
+    } catch (sendError) {
+      setError(sendError instanceof Error ? sendError.message : "Unable to send quote");
+    }
   }
 
   if (!quoteId) {
@@ -82,16 +96,16 @@ export function QuoteBuilder({ enquiryId }: { enquiryId: string }) {
         <div className="space-y-3">
           {items.map((item, index) => (
             <div key={`${item.description}-${index}`} className="grid gap-2 rounded-xl bg-[#f7fafa] p-3 sm:grid-cols-[1fr_7rem_2.5rem]">
-              <input aria-label={`Item ${index + 1} description`} className="field" value={item.description} onChange={(event) => editItem(index, "description", event.target.value)} />
-              <div className="relative"><span className="absolute left-3 top-3 text-[#50676d]">£</span><input aria-label={`Item ${index + 1} price`} className="field pl-7" type="number" value={(item.price / 100).toFixed(0)} onChange={(event) => editItem(index, "price", event.target.value)} /></div>
-              <button aria-label="Remove line item" type="button" onClick={() => removeItem(index)} className="rounded-xl border border-[#d5dfdf] bg-white text-[#50676d]">×</button>
+              <input aria-label={`Item ${index + 1} description`} className="field" value={item.description} disabled={isSent} onChange={(event) => editItem(index, "description", event.target.value)} />
+              <div className="relative"><span className="absolute left-3 top-3 text-[#50676d]">£</span><input aria-label={`Item ${index + 1} price`} className="field pl-7" type="number" value={(item.price / 100).toFixed(0)} disabled={isSent} onChange={(event) => editItem(index, "price", event.target.value)} /></div>
+              <button aria-label="Remove line item" type="button" disabled={isSent} onClick={() => removeItem(index)} className="rounded-xl border border-[#d5dfdf] bg-white text-[#50676d]">×</button>
             </div>
           ))}
         </div>
-        <button type="button" onClick={addItem} className="mt-4 text-sm font-bold text-[#087f83]">+ Add line item</button>
+        <button type="button" disabled={isSent} onClick={addItem} className="mt-4 text-sm font-bold text-[#087f83] disabled:opacity-50">+ Add line item</button>
         <div className="mt-7">
           <label className="label" htmlFor="notes">Customer-facing notes</label>
-          <textarea id="notes" className="field min-h-28" value={notes} onChange={(event) => {
+          <textarea id="notes" disabled={isSent} className="field min-h-28" value={notes} onChange={(event) => {
             const nextNotes = event.target.value;
             setNotes(nextNotes);
             persistDraft(items, deposit, nextNotes, validUntil);
@@ -104,7 +118,7 @@ export function QuoteBuilder({ enquiryId }: { enquiryId: string }) {
           <div className="flex justify-between"><dt className="text-[#50676d]">Quote total</dt><dd className="text-lg font-bold">{currency(total)}</dd></div>
           <div>
             <label className="label" htmlFor="deposit">Deposit required</label>
-            <div className="relative"><span className="absolute left-3 top-3 text-[#50676d]">£</span><input id="deposit" className="field pl-7" type="number" value={deposit} onChange={(event) => {
+            <div className="relative"><span className="absolute left-3 top-3 text-[#50676d]">£</span><input id="deposit" disabled={isSent} className="field pl-7" type="number" value={deposit} onChange={(event) => {
               const nextDeposit = Number(event.target.value || 0);
               setDeposit(nextDeposit);
               persistDraft(items, nextDeposit, notes, validUntil);
@@ -113,16 +127,18 @@ export function QuoteBuilder({ enquiryId }: { enquiryId: string }) {
           <div className="flex justify-between border-t border-[#d5dfdf] pt-4"><dt className="text-[#50676d]">Balance on completion</dt><dd className="font-bold">{currency(total - depositPence)}</dd></div>
           <div>
             <label className="label" htmlFor="validUntil">Valid until</label>
-            <input id="validUntil" className="field" type="date" value={validUntil} onChange={(event) => {
+            <input id="validUntil" disabled={isSent} className="field" type="date" value={validUntil} onChange={(event) => {
               const nextValidUntil = event.target.value;
               setValidUntil(nextValidUntil);
               persistDraft(items, deposit, notes, nextValidUntil);
             }} />
           </div>
         </dl>
+        {isSent ? <p className="mt-3 text-xs text-[#087f83]">This quote has been sent and is now read-only.</p> : null}
         {error ? <p className="mt-3 text-xs text-[#a81f2d]">{error}</p> : null}
-        <button type="button" onClick={preview} className="mt-6 min-h-12 w-full rounded-xl bg-[#087f83] px-4 text-sm font-bold text-white">Preview and send quote</button>
-        <p className="mt-3 text-xs leading-5 text-[#50676d]">Prototype action: no message is sent. The quote is stored in this browser session for the customer preview.</p>
+        <button type="button" onClick={preview} className="mt-6 min-h-12 w-full rounded-xl border border-[#0c9094] bg-white px-4 text-sm font-bold text-[#087f83]">Preview quote</button>
+        <button type="button" disabled={isSent} onClick={sendToCustomer} className="mt-3 min-h-12 w-full rounded-xl bg-[#087f83] px-4 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">{isSent ? "Quote sent" : "Send quote to customer"}</button>
+        <p className="mt-3 text-xs leading-5 text-[#50676d]">Prototype action: no message is sent. Sending stores a sent quote snapshot for customer preview.</p>
       </aside>
     </div>
   );

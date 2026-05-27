@@ -53,6 +53,17 @@ export interface QuoteItem {
   price: number;
 }
 
+export interface SentQuoteSnapshot {
+  version: 1;
+  sentAt: string;
+  items: QuoteItem[];
+  total: number;
+  deposit: number;
+  balance: number;
+  notes: string;
+  validUntil: string;
+}
+
 export interface Quote {
   id: string;
   enquiryId: string;
@@ -67,6 +78,7 @@ export interface Quote {
   deposit: number;
   balance: number;
   notes: string;
+  sentSnapshot?: SentQuoteSnapshot;
 }
 
 export interface QuoteAcceptance {
