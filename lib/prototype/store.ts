@@ -1,5 +1,5 @@
 import { initialPrototypeState } from "./seed";
-import type { AuditEvent, Enquiry, PrototypeState, Quote } from "./types";
+import type { AuditEvent, Enquiry, PaymentRecord, PrototypeState, Quote } from "./types";
 
 const STORAGE_KEY = "gafferly:prototype-state";
 
@@ -366,4 +366,107 @@ export const acceptQuote = (quoteId: string, acknowledgementText: string): Quote
 
   setPrototypeState(nextState);
   return acceptedQuote;
+};
+
+export const createMockPayment = (quoteId: string): PaymentRecord => {
+  const current = getPrototypeState();
+  const quote = current.quotes.find((item) => item.id === quoteId);
+
+  if (!quote) {
+    throw new Error(`Quote ${quoteId} not found`);
+  }
+
+  if (!quote.sentSnapshot) {
+    throw new Error("Quote must be sent before payment can be created");
+  }
+
+  if (quote.status !== "accepted") {
+    throw new Error("Checkout is only available for accepted quotes");
+  }
+
+  const nowIso = new Date().toISOString();
+  const paymentId = `payment-${String(current.payments.length + 1).padStart(4, "0")}`;
+
+  const payment: PaymentRecord = {
+    id: paymentId,
+    quoteId: quote.id,
+    amount: quote.sentSnapshot.deposit,
+    currency: "GBP",
+    status: "created",
+    createdAt: nowIso,
+    updatedAt: nowIso,
+    reference: `${quote.quoteNumber}-${paymentId}`,
+  };
+
+  const nextState: PrototypeState = {
+    ...current,
+    payments: [...current.payments, payment],
+    auditEvents: [
+      ...current.auditEvents,
+      {
+        id: `event-${current.auditEvents.length + 1}`,
+        businessId: current.business.id,
+        enquiryId: quote.enquiryId,
+        quoteId: quote.id,
+        occurredAt: nowIso,
+        event: "payment_created",
+        detail: `${payment.reference} created for £${(payment.amount / 100).toFixed(2)}`,
+      },
+    ],
+  };
+
+  setPrototypeState(nextState);
+  return payment;
+};
+
+export const completeMockPayment = (paymentId: string): PaymentRecord => {
+  const current = getPrototypeState();
+  const payment = current.payments.find((item) => item.id === paymentId);
+
+  if (!payment) {
+    throw new Error(`Payment ${paymentId} not found`);
+  }
+
+  const quote = current.quotes.find((item) => item.id === payment.quoteId);
+  if (!quote?.sentSnapshot) {
+    throw new Error("Payment quote snapshot is unavailable");
+  }
+
+  if (payment.amount !== quote.sentSnapshot.deposit) {
+    throw new Error("Payment amount must match the accepted quote deposit");
+  }
+
+  if (payment.status === "succeeded") {
+    return payment;
+  }
+
+  const nowIso = new Date().toISOString();
+  const completedPayment: PaymentRecord = {
+    ...payment,
+    status: "succeeded",
+    updatedAt: nowIso,
+  };
+
+  const nextState: PrototypeState = {
+    ...current,
+    enquiries: current.enquiries.map((enquiry) =>
+      enquiry.id === quote.enquiryId ? { ...enquiry, status: "deposit_paid" } : enquiry,
+    ),
+    payments: current.payments.map((item) => (item.id === paymentId ? completedPayment : item)),
+    auditEvents: [
+      ...current.auditEvents,
+      {
+        id: `event-${current.auditEvents.length + 1}`,
+        businessId: current.business.id,
+        enquiryId: quote.enquiryId,
+        quoteId: quote.id,
+        occurredAt: nowIso,
+        event: "deposit_received",
+        detail: `${completedPayment.reference} succeeded for £${(completedPayment.amount / 100).toFixed(2)}`,
+      },
+    ],
+  };
+
+  setPrototypeState(nextState);
+  return completedPayment;
 };
