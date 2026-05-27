@@ -3,6 +3,30 @@ import type { AuditEvent, Enquiry, PaymentRecord, PrototypeState, Quote } from "
 
 const STORAGE_KEY = "gafferly:prototype-state";
 
+export type PrototypeStoreSnapshot = {
+  hasHydrated: boolean;
+  state: PrototypeState;
+};
+
+const serverSnapshot: PrototypeStoreSnapshot = {
+  hasHydrated: false,
+  state: initialPrototypeState,
+};
+
+let clientSnapshot: PrototypeStoreSnapshot = serverSnapshot;
+const listeners = new Set<() => void>();
+
+export const subscribePrototypeStore = (listener: () => void) => {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+};
+
+const emitChange = () => {
+  listeners.forEach((listener) => listener());
+};
+
 const cloneState = (state: PrototypeState): PrototypeState => {
   if (typeof structuredClone === "function") {
     return structuredClone(state);
@@ -47,13 +71,33 @@ export const getPrototypeState = (): PrototypeState => {
 export const setPrototypeState = (state: PrototypeState): PrototypeState => {
   const nextState = cloneState(state);
   writeState(nextState);
-  return nextState;
+  return publishState(nextState);
 };
 
 export const resetPrototype = (): PrototypeState => {
   const seeded = getSeededState();
   writeState(seeded);
-  return seeded;
+  return publishState(seeded);
+};
+
+export const getPrototypeServerSnapshot = () => serverSnapshot;
+export const getPrototypeClientSnapshot = () => clientSnapshot;
+
+const publishState = (state: PrototypeState): PrototypeState => {
+  clientSnapshot = {
+    hasHydrated: true,
+    state,
+  };
+  emitChange();
+  return state;
+};
+
+export const hydratePrototypeState = (): PrototypeState => {
+  if (clientSnapshot.hasHydrated) {
+    return clientSnapshot.state;
+  }
+
+  return publishState(getPrototypeState());
 };
 
 export const appendEvent = (event: AuditEvent): PrototypeState => {
