@@ -3,10 +3,11 @@
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { z } from "zod";
+import { createEnquiry } from "@/lib/prototype/store";
 
 const formSchema = z.object({
   customer: z.string().min(2, "Enter your name"),
-  phone: z.string().min(7, "Enter a phone number"),
+  mobile: z.string().min(7, "Enter a phone number"),
   email: z.string().email("Enter a valid email"),
   postcode: z.string().min(3, "Enter a postcode"),
   jobType: z.string().min(1, "Select a work type"),
@@ -32,7 +33,7 @@ export function RequestQuoteForm() {
     const data = new FormData(event.currentTarget);
     const values = {
       customer: String(data.get("customer") ?? ""),
-      phone: String(data.get("phone") ?? ""),
+      mobile: String(data.get("phone") ?? ""),
       email: String(data.get("email") ?? ""),
       postcode: String(data.get("postcode") ?? ""),
       jobType: String(data.get("jobType") ?? ""),
@@ -41,7 +42,7 @@ export function RequestQuoteForm() {
       addOns: data.getAll("addOns").map(String),
       access: String(data.get("access") ?? ""),
       notes: String(data.get("notes") ?? ""),
-      photos,
+      photoFilenames: photos,
     };
     const result = formSchema.safeParse(values);
     if (!result.success) {
@@ -49,8 +50,9 @@ export function RequestQuoteForm() {
       setStep(1);
       return;
     }
-    sessionStorage.setItem("gafferly_enquiry", JSON.stringify(values));
-    router.push("/brightwash/request-quote/confirmation");
+    const enquiry = createEnquiry(values);
+    window.localStorage.setItem("gafferly:last-enquiry-id", enquiry.id);
+    router.push(`/brightwash/request-quote/confirmation?enquiry=${encodeURIComponent(enquiry.id)}`);
   }
 
   return (
@@ -154,7 +156,7 @@ export function RequestQuoteForm() {
             <div>
               <label className="label" htmlFor="phone">Mobile number</label>
               <input className="field" id="phone" name="phone" placeholder="07..." />
-              {errors.phone && <p className="mt-1 text-sm text-red-700">{errors.phone[0]}</p>}
+              {errors.mobile && <p className="mt-1 text-sm text-red-700">{errors.mobile[0]}</p>}
             </div>
           </div>
           <div>

@@ -24,8 +24,11 @@ export interface Business {
 
 export interface Enquiry {
   id: string;
+  reference: string;
   businessId: string;
   customer: string;
+  mobile: string;
+  email: string;
   initials: string;
   postcode: string;
   submittedAt: string;
@@ -35,6 +38,7 @@ export interface Enquiry {
   access: string;
   addOns: string[];
   photoCount: number;
+  photoFilenames: string[];
   notes: string;
   status: EnquiryStatus;
   readiness: string;
